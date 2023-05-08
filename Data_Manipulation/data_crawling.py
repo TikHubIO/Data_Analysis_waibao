@@ -47,8 +47,11 @@ async def get_comment_info(data_category) -> None:
         filtered_comment_texts = [text for text in comment_texts if text != '']
 
         # Translate the filtered texts
-        translated_texts = [translator.translate(text, src='zh-CN', dest='en').text for text in filtered_comment_texts]
-
+        try:
+            translated_texts = [translator.translate(text, src='zh-CN', dest='en').text for text in filtered_comment_texts]
+        except:
+            print("translation error")
+            continue
 
         df_comments = pd.DataFrame(translated_texts, columns=['text'])
         video_id = video_url.split('/')[-1]  # Get the video id from the URL

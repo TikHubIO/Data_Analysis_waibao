@@ -11,7 +11,7 @@ import time
 async def get_comment_info() -> None:
     payload = {}
     headers = {
-        'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InplbnRoaWFhQGdtYWlsLmNvbSIsImV4cCI6MTcxMzQyMTcyMiwiZW1haWwiOiJ6ZW50aGlhYUBnbWFpbC5jb20iLCJldmlsMSI6IiQyYiQxMiRiU1BNZ2RhbUFmZ09FTVY3VlMxSlAua2dnZVkweWl5N3prQUM1cjd5Zzl6akkuL1dIVHhSYSJ9.E32gugbADhSAlLNR0MkwIkr_sbfnArXA5i2Sov_4RCY'
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTUwNDIzOTAsInVzZXJuYW1lIjoibGVxaXVAdWNzYy5lZHUiLCJlbWFpbCI6ImxlcWl1QHVjc2MuZWR1IiwiZXZpbDEiOiIkMmIkMTIkS0RIOHlsSjk4ZGVSSWM1ZmguVzFULmJXMWJMZVdhR0lOLi5uVlpxNlcuTzhzcEEzQTFjMTYifQ.CFDKuop1wfDLcyOnhySOQPDEhPN8HDbpnXw6a1CVcY0'
     }
     df = pd.read_csv('video_list.csv')
     video_url_list = df['Video_URL'].tolist()
@@ -19,7 +19,7 @@ async def get_comment_info() -> None:
     # 可以改动最后一个数字，以测试更多视频（Can change the last number to test more videos）
     # 比如：【0：10】获取前10个视频评论（For example: [0:10] test the first 10 videos）
     # 比如：【0：20】获取前20个视频评论（For example: [0:] test the first 20 videos）
-    video_url_list = video_url_list[0:2]
+    video_url_list = video_url_list[0:1]
 
     print("Getting Comment Data From API.get_tiktok_video_comments()...")
 
@@ -31,21 +31,27 @@ async def get_comment_info() -> None:
         csv_filename = f"comments_raw_data/comments_{video_id}.csv"
         df_comments = pd.DataFrame(columns=['comment'])
 
-        # 
-        for cursor in range (0,5,1):
+        has_more=True
+        cursor=0
+        while has_more:
             try:
                 url= "https://api.tikhub.io/douyin/video_comments/?douyin_video_url=" + video_url+"&cursor="+str(cursor)+"&count=20&region=US&language=en"
-                print(url)
                 response = requests.request("GET", url, headers=headers, data=payload)
+                cursor=cursor+1;
+                if response != None:
+                    print("response is not none")
+                    print(url)
             except:
                 print("All comments from this video have been fetched.")
-                continue
-            translator = Translator()
+                break;
 
+            translator = Translator()
             # Extract the "text" data from the response
             response_data = json.loads(response.text)
+            if(response_data['has_more']==False):
+                print("no more comments!")
+                break;
             comments = response_data.get('comments_list', [])
-
             # Select the "text" data from the comments List, if the comments List is empty, continue
             try:
                 comment_texts = [comment['text'] for comment in comments]
@@ -58,8 +64,12 @@ async def get_comment_info() -> None:
             filtered_comment_texts = [text for text in comment_texts if text != '']
 
             # Translate the filtered texts
-            translated_texts = [translator.translate(text, src='zh-CN', dest='en').text for text in
-                                filtered_comment_texts]
+            try:
+                translated_texts = [translator.translate(text, src='zh-CN', dest='en').text for text in
+                                    filtered_comment_texts]
+            except:
+                print('Translation Error')
+                continue
             # Save the comments in a CSV file
 
             for translated_text in translated_texts:
